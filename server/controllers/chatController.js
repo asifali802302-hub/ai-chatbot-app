@@ -9,17 +9,24 @@ const sendMessage = async (req, res) => {
       return res.status(400).json({ message: 'sessionId and prompt are required' });
     }
 
-    const session = await Store.getSessionById(sessionId, req.user._id);
-    if (!session) {
-      return res.status(404).json({ message: 'Conversation session not found' });
-    }
-
-    const activeCategory = category || session.category || req.user.preferences?.category || 'general';
+    let activeCategory = category || req.user.preferences?.category || 'general';
     const botName = req.user.preferences?.botName || 'NovaAI';
+
+    let session = await Store.getSessionById(sessionId, req.user._id);
+    let targetSessionId = sessionId;
+
+    // Self-healing: if session expired or not found, automatically create a new session
+    if (!session) {
+      const generatedTitle = prompt.length > 35 ? prompt.substring(0, 32) + '...' : prompt;
+      session = await Store.createSession(req.user._id, generatedTitle, activeCategory);
+      targetSessionId = session._id.toString();
+    } else {
+      activeCategory = category || session.category || activeCategory;
+    }
 
     // 1. Save user message to database
     const userMessage = await Store.createMessage({
-      sessionId,
+      sessionId: targetSessionId,
       userId: req.user._id,
       sender: 'user',
       content: prompt,
@@ -29,7 +36,7 @@ const sendMessage = async (req, res) => {
     // Automatically update session title if it's the first message
     if (session.title === 'New Conversation') {
       const generatedTitle = prompt.length > 35 ? prompt.substring(0, 32) + '...' : prompt;
-      await Store.updateSessionTitle(sessionId, req.user._id, generatedTitle);
+      await Store.updateSessionTitle(targetSessionId, req.user._id, generatedTitle);
     }
 
     // 2. Generate AI response
@@ -37,7 +44,7 @@ const sendMessage = async (req, res) => {
 
     // 3. Save AI message to database
     const aiMessage = await Store.createMessage({
-      sessionId,
+      sessionId: targetSessionId,
       userId: req.user._id,
       sender: 'ai',
       content: aiResult.content,

@@ -78,13 +78,13 @@ export const ChatProvider = ({ children }) => {
     const handleReceiveMessage = (msg) => {
       if (msg.sessionId === activeSessionId) {
         setMessages((prev) => {
-          // Prevent duplicates
-          if (prev.some((m) => m._id === msg._id)) return prev;
+          if (prev.some((m) => m._id === msg._id || (m.sender === msg.sender && m.content === msg.content))) {
+            return prev;
+          }
           return [...prev, msg];
         });
       }
 
-      // Update session timestamp & title in sidebar
       setSessions((prev) =>
         prev.map((s) => (s._id === msg.sessionId ? { ...s, updatedAt: new Date() } : s))
       );
@@ -144,7 +144,7 @@ export const ChatProvider = ({ children }) => {
     }
   };
 
-  // Send message
+  // Send message with instant optimistic UI and guaranteed dual-channel delivery
   const sendMessage = async (prompt) => {
     if (!prompt.trim()) return;
 
@@ -155,25 +155,51 @@ export const ChatProvider = ({ children }) => {
       targetSessionId = created._id;
     }
 
+    const trimmedPrompt = prompt.trim();
+
+    // 1. Instantly display user bubble optimistically
+    const tempUserMsg = {
+      _id: 'temp-' + Date.now(),
+      sessionId: targetSessionId,
+      sender: 'user',
+      content: trimmedPrompt,
+      category,
+      createdAt: new Date().toISOString()
+    };
+    setMessages((prev) => [...prev, tempUserMsg]);
+    setIsAiTyping(true);
+
+    // 2. Also emit to socket for room synchronization
     const socket = getSocket();
     if (socket && socket.connected) {
-      // Send via real-time WebSocket
-      socket.emit('send_message', {
-        sessionId: targetSessionId,
-        prompt: prompt.trim(),
-        category
+      socket.emit('join_session', { sessionId: targetSessionId });
+      socket.emit('ai_typing', { sessionId: targetSessionId, isTyping: true });
+    }
+
+    // 3. Guaranteed HTTP REST dispatch
+    try {
+      const res = await chatAPI.sendMessage(targetSessionId, trimmedPrompt, category);
+      const { userMessage, aiMessage } = res.data;
+
+      // Replace optimistic message and append AI response
+      setMessages((prev) => {
+        const withoutTemp = prev.filter(
+          (m) => m._id !== tempUserMsg._id && m._id !== userMessage._id
+        );
+        const withoutDupAi = withoutTemp.filter((m) => m._id !== aiMessage._id);
+        return [...withoutDupAi, userMessage, aiMessage];
       });
-    } else {
-      // Fallback via HTTP REST
-      try {
-        setIsAiTyping(true);
-        const res = await chatAPI.sendMessage(targetSessionId, prompt.trim(), category);
-        setMessages((prev) => [...prev, res.data.userMessage, res.data.aiMessage]);
-        loadSessions(); // refresh title if updated
-      } catch (err) {
-        toast.error('Failed to send message');
-      } finally {
-        setIsAiTyping(false);
+
+      // Update session title in sidebar
+      loadSessions();
+    } catch (err) {
+      console.error('Failed to send message:', err);
+      toast.error(err.response?.data?.message || 'Failed to get AI response. Please try again.');
+      setMessages((prev) => prev.filter((m) => m._id !== tempUserMsg._id));
+    } finally {
+      setIsAiTyping(false);
+      if (socket && socket.connected) {
+        socket.emit('ai_typing', { sessionId: targetSessionId, isTyping: false });
       }
     }
   };

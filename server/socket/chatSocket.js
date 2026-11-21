@@ -44,49 +44,59 @@ const setupChatSocket = (io) => {
     // 3. Real-time message transmission
     socket.on('send_message', async ({ sessionId, prompt, category }) => {
       try {
-        if (!sessionId || !prompt) return;
+        if (!prompt) return;
 
-        const session = await Store.getSessionById(sessionId, socket.user._id);
+        let activeCategory = category || socket.user.preferences?.category || 'general';
+        const botName = socket.user.preferences?.botName || 'NovaAI';
+
+        let session = sessionId ? await Store.getSessionById(sessionId, socket.user._id) : null;
+        let targetSessionId = sessionId;
+
         if (!session) {
-          socket.emit('error', { message: 'Session not found' });
-          return;
+          const generatedTitle = prompt.length > 35 ? prompt.substring(0, 32) + '...' : prompt;
+          session = await Store.createSession(socket.user._id, generatedTitle, activeCategory);
+          targetSessionId = session._id.toString();
+        } else {
+          activeCategory = category || session.category || activeCategory;
         }
 
-        const activeCategory = category || session.category || socket.user.preferences?.category || 'general';
-        const botName = socket.user.preferences?.botName || 'NovaAI';
+        socket.join(targetSessionId);
 
         // 1. Save and broadcast user message
         const userMessage = await Store.createMessage({
-          sessionId,
+          sessionId: targetSessionId,
           userId: socket.user._id,
           sender: 'user',
           content: prompt,
           category: activeCategory
         });
 
-        // Broadcast to everyone in the room (or client directly)
-        io.to(sessionId).emit('receive_message', userMessage);
+        // Broadcast to sender directly and other room members
+        socket.emit('receive_message', userMessage);
+        socket.to(targetSessionId).emit('receive_message', userMessage);
 
         // Update session title if first message
         if (session.title === 'New Conversation') {
           const generatedTitle = prompt.length > 35 ? prompt.substring(0, 32) + '...' : prompt;
-          await Store.updateSessionTitle(sessionId, socket.user._id, generatedTitle);
-          io.to(sessionId).emit('session_updated', { sessionId, title: generatedTitle });
+          await Store.updateSessionTitle(targetSessionId, socket.user._id, generatedTitle);
+          socket.emit('session_updated', { sessionId: targetSessionId, title: generatedTitle });
+          socket.to(targetSessionId).emit('session_updated', { sessionId: targetSessionId, title: generatedTitle });
         }
 
         // 2. Send AI Typing indicator
-        socket.to(sessionId).emit('ai_typing', { sessionId, isTyping: true });
-        socket.emit('ai_typing', { sessionId, isTyping: true });
+        socket.emit('ai_typing', { sessionId: targetSessionId, isTyping: true });
+        socket.to(targetSessionId).emit('ai_typing', { sessionId: targetSessionId, isTyping: true });
 
         // 3. Generate AI response
         const aiResult = await generateAIResponse(prompt, activeCategory, botName);
 
         // Turn off typing indicator
-        io.to(sessionId).emit('ai_typing', { sessionId, isTyping: false });
+        socket.emit('ai_typing', { sessionId: targetSessionId, isTyping: false });
+        socket.to(targetSessionId).emit('ai_typing', { sessionId: targetSessionId, isTyping: false });
 
         // 4. Save and broadcast AI message
         const aiMessage = await Store.createMessage({
-          sessionId,
+          sessionId: targetSessionId,
           userId: socket.user._id,
           sender: 'ai',
           content: aiResult.content,
@@ -95,7 +105,8 @@ const setupChatSocket = (io) => {
           responseTimeMs: aiResult.responseTimeMs
         });
 
-        io.to(sessionId).emit('receive_message', aiMessage);
+        socket.emit('receive_message', aiMessage);
+        socket.to(targetSessionId).emit('receive_message', aiMessage);
 
       } catch (err) {
         console.error('Socket send_message error:', err);
