@@ -186,7 +186,34 @@ const generateAIResponse = async (prompt, category = 'general', botName = 'NovaA
     }
   }
 
-  // 3. High-Quality Adaptive Contextual AI Engine (Offline & Free Tier Resilient)
+  // 3. Attempt Live Free Neural LLM Engine (No Key Required, Full Knowledge Base)
+  try {
+    const encoded = encodeURIComponent(prompt);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    const liveRes = await fetch(`https://text.pollinations.ai/${encoded}`, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (liveRes.ok) {
+      const text = await liveRes.text();
+      if (text && text.trim().length > 15 && !text.includes('Payment Required') && !text.includes('Too Many Requests')) {
+        return {
+          content: text.trim(),
+          tokens: Math.round(text.length / 4),
+          responseTimeMs: Date.now() - startTime,
+          model: 'nova-neural-llm'
+        };
+      }
+    }
+  } catch (err) {
+    console.warn("Live Neural LLM fallback skipped:", err.message);
+  }
+
+  // 4. High-Quality Adaptive Contextual AI Engine (Offline & Free Tier Resilient)
   // Simulate natural token thinking latency (250-400ms)
   await new Promise(r => setTimeout(r, 280));
   const responseContent = generateContextualResponse(prompt, category, botName);
