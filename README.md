@@ -1,12 +1,30 @@
 # 🤖 NovaAI — Real-Time AI-Powered Conversational Platform
 
-[![Full Stack](https://img.shields.io/badge/Stack-Node.js%20+%20Express%20+%20React%2018-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-black?style=for-the-badge&logo=vercel)](https://ai-chatbot-app-xi.vercel.app)
+[![Backend Live](https://img.shields.io/badge/API%20Live-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://ai-chatbot-app-gjuo.onrender.com)
 [![WebSockets](https://img.shields.io/badge/Real--Time-Socket.io%20WebSockets-black?style=for-the-badge&logo=socketdotio&logoColor=white)](https://socket.io)
+[![Stack](https://img.shields.io/badge/Stack-Node.js%20+%20Express%20+%20React%2018-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
 [![Database](https://img.shields.io/badge/Database-MongoDB%20Atlas%20+%20Mongoose-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
-[![Tailwind CSS](https://img.shields.io/badge/UI-Tailwind%20CSS%20v3-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
-[![Security](https://img.shields.io/badge/Security-JWT%20+%20Rate%20Limiting-red?style=for-the-badge&logo=json-web-tokens&logoColor=white)](https://jwt.io)
 
 An enterprise-grade, real-time AI conversational assistant built with **React 18**, **Tailwind CSS**, **Node.js**, **Express.js**, **Socket.io WebSockets**, **Mongoose / MongoDB Atlas**, and **JWT Authentication**. It features real-time streaming updates, multi-persona AI switching, conversation history sessions, thumbs up/down rating feedback, and an administrative telemetry dashboard.
+
+---
+
+## 🌐 Live Production Links
+
+* **🚀 Live Frontend App:** [https://ai-chatbot-app-xi.vercel.app](https://ai-chatbot-app-xi.vercel.app)
+* **⚙️ Backend REST & WebSocket Server:** [https://ai-chatbot-app-gjuo.onrender.com](https://ai-chatbot-app-gjuo.onrender.com)
+* **🩺 Health Check Endpoint:** [https://ai-chatbot-app-gjuo.onrender.com/health](https://ai-chatbot-app-gjuo.onrender.com/health)
+* **💻 GitHub Repository:** [https://github.com/asifali802302-hub/ai-chatbot-app](https://github.com/asifali802302-hub/ai-chatbot-app)
+
+---
+
+## 🔑 Pre-Seeded Demo Accounts
+
+| Account Role | Email | Password | Permissions & Features |
+| :--- | :--- | :--- | :--- |
+| **Administrator** | `admin@chatbot.com` | `password123` | Full chat access + **Admin Analytics Panel** |
+| **Standard User** | `user@chatbot.com` | `password123` | Multi-session chat, personalization & rating |
 
 ---
 
